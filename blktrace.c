@@ -1058,22 +1058,30 @@ static void setup_buts(void)
 	__list_for_each(p, &devpaths) {
 		struct blk_user_trace_setup buts;
 		struct devpath *dpp = list_entry(p, struct devpath, head);
+		int i = 0;
 
 		memset(&buts, 0, sizeof(buts));
 		buts.buf_size = buf_size;
 		buts.buf_nr = buf_nr;
 		buts.act_mask = act_mask;
 
-		if (ioctl(dpp->fd, BLKTRACESETUP, &buts) >= 0) {
-			dpp->ncpus = ncpus;
-			dpp->buts_name = strdup(buts.name);
-			if (dpp->stats)
-				free(dpp->stats);
-			dpp->stats = calloc(dpp->ncpus, sizeof(*dpp->stats));
-			memset(dpp->stats, 0, dpp->ncpus * sizeof(*dpp->stats));
-		} else
-			fprintf(stderr, "BLKTRACESETUP(2) %s failed: %d/%s\n",
-				dpp->path, errno, strerror(errno));
+		for (i = 0; i <= 1; i++) {
+			if (ioctl(dpp->fd, BLKTRACESETUP, &buts) >= 0) {
+				dpp->ncpus = ncpus;
+				dpp->buts_name = strdup(buts.name);
+				if (dpp->stats)
+					free(dpp->stats);
+				dpp->stats = calloc(dpp->ncpus, sizeof(*dpp->stats));
+				memset(dpp->stats, 0, dpp->ncpus * sizeof(*dpp->stats));
+
+				// We succeeded
+				break;
+			} else {
+				fprintf(stderr, "BLKTRACESETUP(2) %s failed: %d/%s\n",
+					dpp->path, errno, strerror(errno));
+				__stop_trace(dpp->fd);
+			}
+		}
 	}
 }
 
